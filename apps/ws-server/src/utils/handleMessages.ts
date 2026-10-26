@@ -242,7 +242,8 @@ export const handleMessage = async (client: Client, data: any) => {
                     type: 'participants:sync',
                     payload: {
                         participants,
-                        joinCode: session?.quiz.joinCode
+                        joinCode: session?.quiz.joinCode,
+                        liveVideo: session?.liveVideo ?? false
                     }
                 }));
 
@@ -283,7 +284,9 @@ export const handleMessage = async (client: Client, data: any) => {
                         type: 'participants:sync',
                         payload: {
                             participants,
-                            joinCode: session?.quiz?.joinCode
+                            joinCode: session?.quiz?.joinCode,
+                            // Tells the screen to connect to the host's video.
+                            liveVideo: session?.liveVideo ?? false
                         }
                     }));
                 }
@@ -334,6 +337,7 @@ export const handleMessage = async (client: Client, data: any) => {
                 payload: {
                     participants,
                     joinCode: session?.quiz?.joinCode,
+                    liveVideo: session?.liveVideo ?? false,
                 },
             }));
             break;

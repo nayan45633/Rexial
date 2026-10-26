@@ -1,0 +1,22 @@
+# LiveKit media server config for local development (docker-compose.yml).
+# Same shape as livekit.prod.yaml, with the fixed dev keys and the address
+# browsers on this machine can reach.
+
+port: 7880
+log_level: info
+
+rtc:
+  udp_port: 7882
+  tcp_port: 7881
+  # Advertise localhost: the container's own address is not reachable from
+  # the browser on macOS or Windows. To test from a phone on the same Wi-Fi,
+  # set this to the laptop's LAN IP.
+  node_ip: 127.0.0.1
+  use_external_ip: false
+
+room:
+  auto_create: false
+  empty_timeout: 300
+
+keys:
+  devkey: rexial-local-dev-secret-not-for-production

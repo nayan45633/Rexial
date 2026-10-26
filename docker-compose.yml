@@ -21,6 +21,10 @@ services:
       - "8080:8080"
     volumes:
       - .:/app
+    # Share the HTTP server's signing secret so organizer tokens verify here.
+    env_file:
+      - path: apps/http-server/.env
+        required: false
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/Qtrive
       - REDIS_HOST=redis    
@@ -73,6 +77,42 @@ services:
       retries: 5
       start_period: 60s
 
+  # Live video quizzes. Off unless asked for:
+  #   docker compose --profile streaming up
+  # and set VITE_STREAMING_URL=http://localhost:7000 for the frontend.
+  livekit:
+    image: livekit/livekit-server:v1.13.7
+    container_name: RexialLiveKit
+    profiles: ["streaming"]
+    command: --config /etc/livekit.yaml
+    volumes:
+      - ./apps/streaming/livekit/livekit.dev.yaml:/etc/livekit.yaml:ro
+    ports:
+      - "7880:7880"         # signaling
+      - "7881:7881"         # media over TCP (fallback)
+      - "7882:7882/udp"     # media over UDP
+
+  streaming:
+    build:
+      context: .
+      dockerfile: apps/streaming/Dockerfile
+    container_name: RexialStreaming
+    profiles: ["streaming"]
+    ports:
+      - "7000:7000"
+    volumes:
+      - .:/app
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/Qtrive
+      - LIVEKIT_URL=http://livekit:7880
+      - LIVEKIT_PUBLIC_URL=ws://localhost:7880
+    command: sh -c "pnpm --filter @repo/db run db:generate && pnpm run dev"
+    depends_on:
+      db:
+        condition: service_healthy
+      livekit:
+        condition: service_started
+
   db:
     image: postgres:15-alpine
     container_name: Rexial_db
@@ -95,7 +135,9 @@ services:
     image: redis:7-alpine
     container_name: Rexial_redis
     ports:
-      - "6379:6379"
+      # Host port is overridable for machines that already run Redis on
+      # 6379. Containers reach it as redis:6379 either way.
+      - "${REDIS_HOST_PORT:-6379}:6379"
     command: redis-server --requirepass thisistheredisPassword --bind 0.0.0.0
     volumes:
       - Qtrive_redis_data:/data

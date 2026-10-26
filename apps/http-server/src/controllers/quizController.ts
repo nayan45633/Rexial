@@ -309,18 +309,46 @@ export const startQuizSessionController = async (req: Request, res: Response) =>
 
         if (quiz.status !== 'ACTIVE') return errorResponse(res, 400, "Quiz is not active. Please generate access code first");
 
-        let session = quiz.quizSessions[0];
+        const liveVideo = req.body?.liveVideo === true;
+
+        let session: typeof quiz.quizSessions[number] | undefined = quiz.quizSessions[0];
+
+        // The lobby already open was set up for the other mode. Players who
+        // joined it were told whether there is video, and a live video lobby
+        // may hold more than an ordinary one allows, so it cannot be switched
+        // under them. An empty lobby is replaced instead of updated: ws-server
+        // caches the session row, and a fresh id cannot be served stale.
+        if (session && session.liveVideo !== liveVideo) {
+            const joined = await prisma.participant.count({ where: { sessionId: session.id } });
+
+            if (joined > 0) {
+                return errorResponse(
+                    res,
+                    409,
+                    `Players have already joined this lobby ${session.liveVideo ? 'with' : 'without'} live video. Host it the same way, or wait until it ends.`
+                );
+            }
+
+            await prisma.quizSession.update({
+                where: { id: session.id },
+                data: { status: 'CANCELLED', endedAt: new Date() }
+            });
+            session = undefined;
+        }
+
         if (!session) {
             session = await prisma.quizSession.create({
                 data: {
                     quizId: quizId as string,
-                    status: 'WAITING'
+                    status: 'WAITING',
+                    liveVideo
                 }
             })
         }
 
         return res.status(200).json({
             sessonId: session.id,
+            liveVideo: session.liveVideo,
         });
 
     } catch (error) {

@@ -3,6 +3,7 @@ import { useLocation, useNavigate, Link } from 'react-router-dom';
 
 
 import { api } from '../services/api';
+import { participantTokenKey } from '../services/streamApi';
 import { BsArrowLeft } from 'react-icons/bs';
 import { RiLoader2Fill } from 'react-icons/ri';
 import BgBoss from '../components/BgBoss';
@@ -61,6 +62,11 @@ function JoinQuiz() {
             // let someone resume as a participant who does not exist there.
             localStorage.setItem(`rexial:participant:${data.sessionId}`, data.participantId);
             localStorage.setItem(`rexial:username:${data.sessionId}`, normalizedUsername);
+            // Proves to the live video service that this browser is this
+            // player; the participant id alone is visible to everyone.
+            if (data.participantToken) {
+                localStorage.setItem(participantTokenKey(data.sessionId), data.participantToken);
+            }
 
             // Redirect to play arena with session/participant data
             navigate(`/quiz/play/${data.sessionId}`, {

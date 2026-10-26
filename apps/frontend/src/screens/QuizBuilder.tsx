@@ -1,7 +1,8 @@
 import { Link, useNavigate, useParams } from "react-router-dom"
 import BgBoss from "../components/BgBoss"
-import { BsArrowLeft, BsMailbox, BsTrash2, BsStars } from "react-icons/bs"
+import { BsArrowLeft, BsMailbox, BsTrash2, BsStars, BsCameraVideo } from "react-icons/bs"
 import { api } from "../services/api"
+import { streamingEnabled } from "../services/streamApi"
 import { useEffect, useState } from "react"
 import { BiPlay, BiPlus, BiSave } from "react-icons/bi"
 import { LuUserSearch } from "react-icons/lu"
@@ -94,11 +95,11 @@ function QuizBuilder() {
   }
 
 
-  const handleHostLive = async () => {
+  const handleHostLive = async (liveVideo = false) => {
     if (hosting) return alert("Quiz is already Hosted!")
     setHosting(true);
     try {
-      const { data } = await api.post(`/quizzes/${id}/start-session`);
+      const { data } = await api.post(`/quizzes/${id}/start-session`, { liveVideo });
       console.log("Api data is", data);
       navigate(`/quiz/manage/${data.sessonId}`);
       
@@ -106,7 +107,10 @@ function QuizBuilder() {
 
 
     } catch (error) {
-      alert('Failed to start session');
+      // The server explains a refusal, e.g. a lobby already opened in the
+      // other mode; that is more use to the host than a generic failure.
+      const message = (error as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      alert(message || 'Failed to start session');
       console.log(error);
       setHosting(false);
     }
@@ -228,13 +232,24 @@ function QuizBuilder() {
             )}
             {quiz?.status === 'ACTIVE' && (
               <button
-                onClick={handleHostLive}
+                onClick={() => handleHostLive()}
                 disabled={hosting || (quiz.questions?.length === 0)}
                 className="text-gray-50 bg-green-500/30 hover:bg-green-500/40 cursor-pointer active:scale-95 px-6 rounded-md font-secondary font-extrabold tracking-widest border border-green-600/40 flex items-center gap-2 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 title={quiz.questions?.length === 0 ? 'Add at least one question first' : 'Host a live quiz session'}
               >
                 <BiPlay className="w-4 h-4 fill-current" />
                 {hosting ? 'Starting...' : 'Host Live'}
+              </button>
+            )}
+            {quiz?.status === 'ACTIVE' && streamingEnabled && (
+              <button
+                onClick={() => handleHostLive(true)}
+                disabled={hosting || (quiz.questions?.length === 0)}
+                className="text-gray-50 bg-pink-600/30 hover:bg-pink-600/40 cursor-pointer active:scale-95 px-6 rounded-md font-secondary font-extrabold tracking-widest border border-pink-600/40 flex items-center gap-2 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                title={quiz.questions?.length === 0 ? 'Add at least one question first' : 'Host on camera, for up to 300 players'}
+              >
+                <BsCameraVideo className="w-4 h-4" />
+                {hosting ? 'Starting...' : 'Host with Video'}
               </button>
             )}
           </div>

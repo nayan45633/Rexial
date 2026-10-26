@@ -117,6 +117,9 @@ model QuizSession {
   id                   String        @id @default(uuid())
   currentQuestionIndex Int           @default(0)
   status               SessionStatus @default(WAITING)
+  // Chosen by the host when they open the lobby. A live video session is
+  // capped at 300 participants and gets a LiveKit room (apps/streaming).
+  liveVideo            Boolean       @default(false)
   startedAt            DateTime?
   endedAt              DateTime?
   createdAt            DateTime      @default(now())

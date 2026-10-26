@@ -105,6 +105,58 @@ services:
             retries: 5
             start_period: 60s
 
+    # Live video quizzes, opt-in. Enable with COMPOSE_PROFILES=streaming in
+    # the deploy directory's .env, after the setup in apps/streaming/README.md
+    # (keys in .env and .env.prod, firewall ports, proxy hosts).
+    livekit:
+        image: livekit/livekit-server:v1.13.7
+        container_name: rexial-livekit-prod
+        profiles: ["streaming"]
+        restart: always
+        command: --config /etc/livekit.yaml
+        # Only the keys, never .env.prod: LiveKit also reads REDIS_HOST from
+        # its environment, and seeing the backend's Redis there it switches
+        # to multi-node mode and fails to start. LIVEKIT_KEYS
+        # ("<key>: <secret>") lives in the .env next to this file, beside
+        # COMPOSE_PROFILES.
+        environment:
+            - LIVEKIT_KEYS=${LIVEKIT_KEYS:-}
+        volumes:
+            - ./apps/streaming/livekit/livekit.prod.yaml:/etc/livekit.yaml:ro
+        # Signaling (7880) stays on the docker network behind nginx. Media
+        # cannot be proxied, so these two are published directly.
+        ports:
+            - "7881:7881"
+            - "7882:7882/udp"
+        networks:
+            - rexial-network
+
+    streaming:
+        build:
+            context: .
+            dockerfile: apps/streaming/Dockerfile.prod
+            args:
+                DATABASE_URL: ${DATABASE_URL}
+        image: codeheist/rexial-streaming:${IMAGE_TAG:-latest}
+        container_name: rexial-streaming-prod
+        profiles: ["streaming"]
+        restart: always
+        env_file:
+            - .env.prod
+        environment:
+            # .env.prod's PORT belongs to the backend.
+            - PORT=7000
+            - LIVEKIT_URL=http://livekit:7880
+        networks:
+            - rexial-network
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+        command: >
+            sh -c "pnpm --filter @repo/db run db:generate:prod &&
+                   pnpm run start"
+        depends_on:
+            - livekit
+
     # No db or redis services: PostgreSQL and Redis are installed on the host
     # via apt and reached through host.docker.internal. See VPS-DEPLOYMENT.md
     # steps 3-5 for the host config (bind the docker bridge, firewall rules).

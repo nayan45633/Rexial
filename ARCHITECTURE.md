@@ -31,7 +31,8 @@ Rexial is a live quiz platform. A host builds a quiz, generates a join code,
 and starts a session; participants join with that code and answer questions in
 real time, scored on speed, with a live leaderboard.
 
-It is split into **four services** in one monorepo:
+It is split into **four services** in one monorepo, plus an optional fifth for
+live video:
 
 | Service | Stack | Port | Responsibility |
 |---|---|---|---|
@@ -39,6 +40,7 @@ It is split into **four services** in one monorepo:
 | `http-server` | Express + Prisma | 4000 | Auth, CRUD, session setup |
 | `ws-server` | `ws` + Redis | 8080 | Live gameplay, timers, scoring |
 | `genAI` | FastAPI + LangChain | 8000 | AI question generation from PDFs |
+| `streaming` *(optional)* | Express + LiveKit | 7000 | Live video rooms: who may join, speak, moderate |
 
 Backed by **PostgreSQL** (source of truth) and **Redis** (hot cache + pub/sub).
 
@@ -236,6 +238,30 @@ for embeddings.
 All clients are built **lazily on first use**. Constructing them at import time
 meant a missing API key crashed the whole service on startup — including
 `/health`, which made the container fail its healthcheck and restart forever.
+
+### streaming — live video (optional)
+
+Runs a quiz on camera. Media goes through a self-hosted **LiveKit** server
+(WebRTC SFU, written in Go); this service only issues room tokens and carries
+out the host's moderation, so it is small and stays out of the media path.
+
+- The host picks video when opening the lobby, which sets
+  `QuizSession.liveVideo`. http-server then caps joins at **300**, counting
+  under a row lock, and hands each player a signed participant token.
+- Hosts get tokens that can publish camera, mic and screen. Players get
+  watch-and-listen tokens; a host grants a player the mic through the LiveKit
+  server API, and takes it back the same way.
+- Rooms are created only by this service (LiveKit runs with `auto_create`
+  off), with the participant limit set. The call outlives the quiz so the
+  host can talk over the results; a 10-second check against Postgres closes
+  a finished quiz's room 30 seconds after the last host leaves, when the
+  host ends it, or an hour after the end. A running quiz's room is never
+  closed this way, so a host reload mid-quiz is harmless.
+- Off unless configured: without `VITE_STREAMING_URL` the frontend never
+  offers it and never loads the LiveKit client.
+
+Full details, the permission table and deployment steps:
+[apps/streaming/README.md](apps/streaming/README.md).
 
 ---
 
@@ -545,4 +571,5 @@ Honest list of what is not solved yet.
 | **Deploys** | `docker compose up -d` recreates containers — brief downtime, no rolling update |
 | **Environments** | No staging; `main` deploys straight to production |
 | **Tests** | No automated test suite. CI covers lint, types, builds and migrations, but not behaviour |
+| **Live video** | No TURN/TLS yet, so players on networks that block UDP 7882 and TCP 7881 get the quiz without the video |
 | **Frontend lint** | ~20 pre-existing eslint errors; the CI lint step reports without blocking (#6) |

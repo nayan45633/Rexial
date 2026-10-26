@@ -388,7 +388,7 @@ describe("a verified organizer can run their quiz", () => {
         expect(sent(host)).toEqual([
             {
                 type: "participants:sync",
-                payload: { participants: [{ id: "p-1" }], joinCode: "ABC123" },
+                payload: { participants: [{ id: "p-1" }], joinCode: "ABC123", liveVideo: false },
             },
         ]);
     });

@@ -40,6 +40,11 @@ jobs:
           - service: genai
             image: rexial-genai
             dockerfile: apps/genAI/Dockerfile.prod
+          # Built every time so a server that turns the streaming profile
+          # on finds this commit's image; nothing runs it otherwise.
+          - service: streaming
+            image: rexial-streaming
+            dockerfile: apps/streaming/Dockerfile.prod
 
     steps:
       - uses: actions/checkout@v4

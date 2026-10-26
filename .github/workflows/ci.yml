@@ -68,6 +68,13 @@ jobs:
       - name: Test ws-server
         run: pnpm --filter ws-server run test
 
+      - name: Test frontend
+        run: pnpm --filter frontend run test
+      # Who may join a video room, speak or moderate. Postgres and the
+      # LiveKit API are mocked; tokens are signed for real.
+      - name: Test streaming
+        run: pnpm --filter streaming run test
+
       # The super-admin panel (apps/admin, apps/admin-server) is deployed
       # by hand to Vercel / Render and is deliberately left out of CI.
       - name: Build all workspaces
@@ -170,6 +177,8 @@ jobs:
             dockerfile: apps/ws-server/Dockerfile.prod
           - service: genai
             dockerfile: apps/genAI/Dockerfile.prod
+          - service: streaming
+            dockerfile: apps/streaming/Dockerfile.prod
 
     steps:
       - uses: actions/checkout@v4

@@ -27,10 +27,12 @@ something here, open an issue saying so and we will scope it with you.
 - [ ] Persist uploaded PDFs between requests
 - [ ] PPT and DOCX input alongside PDF
 
-## v3 — Live video quizzes (planned)
+## v3 — Live video quizzes (in progress)
 
-- [ ] WebRTC host streaming
-- [ ] Participant interaction during a live session
+- [x] WebRTC host streaming (LiveKit, `apps/streaming`), up to 300 players
+- [x] Participant interaction during a live session: raise a hand, speak when let in
+- [ ] TURN over TLS for networks that block WebRTC
+- [ ] Text chat during a live session
 - [ ] In-quiz explanations after each question
 - [ ] Recording and replay
 

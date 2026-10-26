@@ -1,0 +1,32 @@
+# LiveKit media server config for production (docker-compose.prod.yml).
+# Keys are not stored here: the container reads them from LIVEKIT_KEYS in
+# the deploy directory's .env, as "<api key>: <api secret>", and apps/streaming signs tokens
+# with the same pair (LIVEKIT_API_KEY / LIVEKIT_API_SECRET).
+
+port: 7880            # signaling (WebSocket), proxied by nginx as live.<domain>
+log_level: info
+
+rtc:
+  # Media over a single UDP port (muxed), with TCP as the fallback for
+  # networks that block UDP. Both must be open in the firewall.
+  udp_port: 7882
+  tcp_port: 7881
+  # Discover the VPS's public IP over STUN and advertise it to browsers.
+  use_external_ip: true
+
+room:
+  # Rooms are only created by apps/streaming, which sets the 300-player cap.
+  # A client cannot conjure up an unlimited room by joining a new name.
+  auto_create: false
+  empty_timeout: 300
+
+# Players behind strict school or office firewalls that block both ports
+# above need TURN over TLS on 443. That needs its own domain and certificate;
+# see apps/streaming/README.md before enabling.
+# turn:
+#   enabled: true
+#   domain: turn.example.com
+#   tls_port: 5349
+#   udp_port: 3478
+#   cert_file: /certs/turn.crt
+#   key_file: /certs/turn.key
